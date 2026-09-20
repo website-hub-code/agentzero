@@ -751,3 +751,14 @@ Repository
 GitHub:
 https://github.com/website-hub-code/agentzero
 ```
+
+### AI Usage
+
+AGENTZERO was developed with AI-assisted engineering throughout the design and implementation process. The initial system architecture, security flow, risk-engine concepts, and component structure were developed through iterative AI-assisted design and reasoning.
+
+AI was then used to generate and refine portions of the implementation, including the Python runtime, risk evaluation logic, API endpoints, frontend dashboard, event system, Attack Lab, and supporting UI components. The generated code was reviewed, tested, debugged, and iterated manually during development.
+
+The development process was iterative: architectural ideas were proposed and refined, implementation was generated, issues were identified through testing, and the system was repeatedly modified until the intended behavior was achieved.
+
+AI was used as an engineering and prototyping tool, while the overall product direction, decisions, testing, integration, and final implementation were guided by the project developer.
+
