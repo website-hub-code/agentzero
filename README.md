@@ -1,10 +1,10 @@
 # AGENTZERO
 
-> **Runtime security for autonomous AI agents.**
+> **Let agents act. Keep execution under control.**
 
-AGENTZERO is a runtime security layer that sits between an autonomous AI agent and consequential tool execution.
+AGENTZERO is a runtime security layer for autonomous AI agents.
 
-The agent proposes an action. AGENTZERO independently evaluates the action using runtime facts, semantic analysis, risk scoring, and explicit security policies before allowing it to execute.
+Instead of allowing an AI agent to directly execute consequential tool calls, AGENTZERO sits between the agent and execution:
 
 ```text
 USER
@@ -22,55 +22,62 @@ AGENTZERO
 ALLOW / REVIEW / BLOCK
   ↓
 TOOL EXECUTION
+
+The Python runtime is the actual AGENTZERO security engine.
+
+The HTML application in demo/index.html is the demonstration and control console used to visualize and test the runtime.
+
 Why AGENTZERO?
 
-AI agents can now do more than generate text. They can:
+Modern AI agents are increasingly capable of taking real actions:
 
-Read and modify files
-Call APIs
-Send emails and messages
-Upload data
-Access external services
-Change permissions
-Perform other consequential operations
+Reading and modifying files
+Calling APIs
+Sending messages and email
+Uploading data
+Accessing external services
+Changing permissions
+Performing other consequential operations
 
-The security problem is that an agent can make a reasonable internal decision while still proposing an action that is unsafe, unauthorized, or inconsistent with the user's actual request.
+That creates a new security boundary.
 
-AGENTZERO adds an independent security boundary before execution.
+An agent can make a reasonable decision according to its own reasoning while still proposing an action that is unsafe, unauthorized, or inconsistent with the user's actual goal.
+
+AGENTZERO provides an independent runtime security layer before the action reaches execution.
 
 Core Principle
 
 The AI agent can propose an action. It should not be the final authority over whether that action executes.
 
-AGENTZERO separates five responsibilities:
+AGENTZERO separates the responsibilities of the system:
 
 Component	Responsibility
 AI Agent	Proposes what it wants to do
 Semantic Analyzer	Interprets intent and security-relevant context
-Runtime Layer	Provides concrete facts about the environment
-Risk Engine	Calculates risk from multiple signals
+Runtime Layer	Provides concrete runtime evidence
+Risk Engine	Calculates structured risk
 Policy Engine	Decides ALLOW, REVIEW, or BLOCK
 
-This separation helps reduce false positives and prevents an AI model's interpretation from becoming the final authorization decision.
+This separation is important because an AI-generated security judgment should not automatically become the final authorization decision.
 
-Security Model
+Security Signals
 
 AGENTZERO evaluates consequential actions across multiple dimensions.
 
 Sensitive Information
 
-Detects and evaluates information such as:
+Evaluates whether the action involves:
 
 PII
-Identity data
-Financial data
+Identity information
+Financial information
 Credentials
 API keys
 Secrets
 Health information
-Other sensitive classifications
+Other classified sensitive data
 
-A high sensitive-information score describes the data involved. It does not, by itself, mean the action is malicious.
+A high sensitive-information score describes the data involved. It does not automatically mean the action is malicious.
 
 Intent Deviation
 
@@ -84,7 +91,7 @@ User:
 Agent:
 upload_file → external.example
 
-The upload is not part of the requested goal, so intent deviation can be high.
+The upload was not requested, so intent deviation can be high.
 
 But:
 
@@ -94,20 +101,22 @@ User:
 Agent:
 upload_file → PDF.com
 
-is aligned with the user's request, so intent deviation should remain low.
+is aligned with the user's request.
+
+This distinction prevents external transfers from being incorrectly labeled as intent deviation simply because they cross a network boundary.
 
 Prompt Injection
 
-Looks for untrusted instructions attempting to manipulate the agent, such as:
+Detects signals indicating that untrusted content is attempting to manipulate the agent, such as:
 
-Override attempts
-Goal-change instructions
+Attempts to override instructions
+Attempts to change the agent's goal
 Requests for secrets
-Attempts to bypass policies
-Instructions originating from documents or external content
+Attempts to bypass security controls
+Instructions embedded in untrusted documents or external content
 Destination Risk
 
-Evaluates whether information is moving to:
+Evaluates where information is going:
 
 Internal destinations
 Trusted external destinations
@@ -115,51 +124,51 @@ Approved services
 Unknown or unapproved destinations
 Trust Boundary
 
-Tracks movement of data across trust boundaries, such as an internal runtime sending information to an external service.
+Tracks movement of data across trust boundaries, such as sending internal information to an external service.
 
 Action Impact
 
-Represents the consequence of the proposed operation.
+Represents how consequential the proposed operation is.
 
-Examples of potentially higher-impact actions include:
+Examples include:
 
-Uploading data
-Sending external messages
-Deleting data
-Changing permissions
+File uploads
+External messages
+Data deletion
+Permission changes
 Financial or infrastructure operations
 
-High impact is a property of an action, not an automatic verdict that the action is malicious.
+High impact is a property of an action, not automatically proof that the action is malicious.
 
 Privilege Risk
 
-Evaluates whether the action requires elevated authority.
+Evaluates whether an action requires elevated authority.
 
 Source / Provenance
 
-Tracks where the information came from and how trustworthy that source is.
+Tracks where information came from and how trustworthy that source is.
 
 Uncertainty
 
-Represents missing or incomplete runtime information instead of silently assuming unknown values are safe.
+Represents missing or incomplete runtime information instead of silently treating unknown information as safe.
 
 Risk Engine
 
-AGENTZERO combines the security dimensions into a structured 0–100 risk score.
+AGENTZERO combines multiple signals into a structured 0–100 risk score.
 
-The current model includes:
+Example:
 
-Sensitive Information
-Destination Risk
-Action Impact
-Intent Deviation
-Source Risk
-Prompt Injection
-Privilege Risk
-Trust Boundary
-Uncertainty
+Sensitive Information     88
+Destination Risk           80
+Action Impact              85
+Intent Deviation            5
+Source Risk                25
+Prompt Injection            0
+Privilege Risk               0
+Trust Boundary             95
+Uncertainty                13
 
-The engine also supports interaction bonuses.
+The risk engine also evaluates interactions between signals.
 
 For example:
 
@@ -168,60 +177,58 @@ Sensitive Data
 Risky External Destination
       ↓
 Additional Risk
-
-or:
-
 Prompt Injection
       +
 Goal Deviation
       ↓
 Additional Risk
-
-or:
-
 High Privilege
       +
 High Impact Action
       ↓
 Additional Risk
 
-The exact weights and thresholds can be configured in the AGENTZERO runtime.
+The final score is then evaluated against the active security policies.
 
 Policy Engine
 
-Risk scores do not directly replace security policy.
-
-The policy engine evaluates the observed security facts and risk level and produces one of:
+AGENTZERO converts security evidence and risk into one of three outcomes:
 
 ALLOW
 REVIEW
 BLOCK
 
-Examples:
+Example:
 
-Sensitive data
+Sensitive information
 +
 Unapproved external destination
 +
 External transfer
         ↓
 BLOCK
+
+Example:
+
 High-impact action
 +
-High action risk
+Elevated action risk
         ↓
 REVIEW
+
+Example:
+
 Low-risk action
 +
-No matching security policy
+No matching policy
         ↓
 ALLOW
 
-Hard security policies can override score-only thresholds.
+Hard policy rules can override score-only thresholds.
 
 Human Approval
 
-When AGENTZERO decides that an action requires review, execution is paused.
+When an action requires review, AGENTZERO pauses execution.
 
 Agent proposes action
         ↓
@@ -231,34 +238,49 @@ REVIEW
         ↓
 Execution PAUSED
         ↓
-Human sees evidence + risk + policy
+Human sees:
+  • action
+  • risk
+  • reasons
+  • evidence
+  • policy
         ↓
 APPROVE / DENY
-        ↓
-Tool execution or cancellation
 
-The UI exposes the exact reasons for review rather than showing only a generic warning.
+The action cannot continue until the approval step is completed.
 
-Explainable Security Events
+Explainable Events
 
-Every evaluated action produces an auditable event.
+Every evaluated action produces an auditable security event.
 
-Instead of:
+Instead of only:
 
-BLOCKED — risk 84
+BLOCKED — Risk 84
 
-AGENTZERO provides a structured explanation:
+AGENTZERO can show:
 
-Decision: BLOCK
+Decision
+BLOCK
 
-Sensitive Information: 88 / 100
-Destination Risk:       80 / 100
-Action Impact:           85 / 100
-Intent Deviation:        5 / 100
-Prompt Injection:        0 / 100
-Trust Boundary:         95 / 100
+Sensitive Information
+88 / 100
 
-The event also records:
+Destination Risk
+80 / 100
+
+Action Impact
+85 / 100
+
+Intent Deviation
+5 / 100
+
+Prompt Injection
+0 / 100
+
+Trust Boundary
+95 / 100
+
+Events can also contain:
 
 Event ID
 Timestamp
@@ -267,17 +289,17 @@ Session
 Task
 Proposed action
 Runtime features
-Matched policies
 Risk breakdown
+Matched policies
 Explanation
+Evidence
 Analyzer source
-Relevant evidence
 
-This makes false positives easier to investigate and security decisions easier to audit.
+This makes decisions easier to understand, debug, and audit.
 
 Architecture
 
-The real AGENTZERO product is the Python runtime security engine.
+The real AGENTZERO product is the Python runtime.
 
                     AGENTZERO
                          │
@@ -319,108 +341,189 @@ The real AGENTZERO product is the Python runtime security engine.
              │
              ▼
         TOOL EXECUTION
-Product vs Demo Console
+Product vs Demo
 
-The Python runtime is the core product.
+The repository contains two distinct layers:
 
-The HTML/JavaScript application is a demonstration and control console built around the runtime.
+Real Product
 
-The console provides:
+The Python runtime implements the security engine, including:
 
-Security dashboard
-Live Agent view
-Risk visualization
-Event/audit history
+Runtime evaluation
+Risk calculation
+Policy enforcement
+Agent tool gating
+Human approval flow
+Security events
+API endpoints
+Demonstration Console
+
+demo/index.html provides a browser-based demonstration of the runtime.
+
+It is used for:
+
+Visualizing security decisions
+Running Attack Lab scenarios
+Inspecting event explanations
+Testing policies
+Demonstrating human approval
+Configuring providers and models
+Exploring the AGENTZERO workflow
+
+The demo is not the security boundary. The Python runtime is.
+
+Project Structure
+
+The repository is organized around the runtime and its demonstration interface.
+
+agentzero/
+├── agentzero_backend.py
+├── demo/
+│   └── index.html
+└── README.md
+
+If additional configuration or support files are present in the repository, keep them alongside the runtime when deploying the project.
+
+Running AGENTZERO
+Requirements
+
+For the current local/demo build:
+
+Python 3
+A modern browser
+No third-party Python packages are required for the default local runtime
+Option 1 — Run the Real AGENTZERO Runtime
+
+Clone the repository:
+
+git clone https://github.com/website-hub-code/agentzero.git
+cd agentzero
+
+Start the Python runtime:
+
+python3 agentzero_backend.py
+
+The runtime starts its local HTTP server and exposes the AGENTZERO API.
+
+By default, the development server uses:
+
+http://127.0.0.1:8000
+
+Open the server URL in your browser.
+
+If the repository version you're using prints a different host or port at startup, use the URL shown in the terminal.
+
+Option 2 — Open the Demo Directly
+
+The repository contains a browser demo at:
+
+demo/index.html
+
+You can open it directly in a browser for the visual demonstration.
+
+From the repository root:
+
+cd demo
+
+Then open index.html in Chrome or another modern browser.
+
+On Linux, for example:
+
+xdg-open index.html
+
+On macOS:
+
+open index.html
+
+On Windows:
+
+start index.html
+
+The direct demo is useful for visual exploration, while the Python runtime is the actual AGENTZERO security engine.
+
+Running the Demo Through the Python Runtime
+
+For the most complete demonstration, run the Python backend first:
+
+python3 agentzero_backend.py
+
+Then open the runtime URL printed by the server.
+
+This lets the demonstration interface communicate with the actual AGENTZERO runtime instead of behaving as a standalone visual mockup.
+
+Demo Workflow
+
+A useful demonstration sequence is:
+
+1. Start agentzero_backend.py
+2. Open the AGENTZERO interface
+3. Open Live Agent
+4. Submit a task
+5. Watch the agent propose a tool call
+6. Let AGENTZERO evaluate it
+7. Inspect the risk breakdown
+8. Open Attack Lab
+9. Run a security scenario
+10. Inspect the explanation
+11. Trigger a REVIEW scenario
+12. Approve or deny the action
+13. Open the event history
+
+The most important concept to demonstrate is:
+
+AI Agent
+   ↓
+AGENTZERO
+   ↓
+Security Decision
+   ↓
+Execution
 Attack Lab
-File inspection
-Policy configuration
-Risk-weight configuration
-Provider configuration
-Model selection
-Human approval UI
 
-The browser interface is therefore not the security boundary. The Python runtime performs the actual evaluation and enforcement.
-
-Agent and AGENTZERO Models
-
-AGENTZERO supports independent models for:
-
-The AI agent
-The AGENTZERO semantic analyzer
-
-For example:
-
-Agent:
-Gemini
-
-AGENTZERO Analyzer:
-Claude
-
-or:
-
-Agent:
-OpenAI
-
-AGENTZERO Analyzer:
-Gemini
-
-This keeps the security layer independent from the model proposing the action.
-
-Provider model discovery can be performed through the backend rather than relying only on a hardcoded frontend list.
-
-Supported provider integrations currently include:
-
-OpenAI
-Anthropic
-Google Gemini
-Groq
-Files and Artifacts
-
-AGENTZERO is designed to preserve original artifacts as security evidence whenever possible.
-
-For documents and images, the system can work with:
-
-Original Artifact
-      +
-Metadata
-      +
-Classification
-      +
-Provenance
-      +
-Security Analysis
-
-The goal is to avoid relying only on extracted text when the original document or image contains security-relevant information.
-
-Attack Lab
-
-The demonstration console includes several security scenarios.
+The demo includes scenarios such as:
 
 Malicious PDF
 
-An untrusted document attempts to redirect the agent toward a malicious external action.
+A document contains instructions attempting to manipulate the agent.
 
+Expected behavior:
+
+Prompt Injection
+HIGH
+
+Intent Deviation
+HIGH
+
+→ BLOCK
 Data Exfiltration
 
-Sensitive information is sent toward an unknown external destination.
+Sensitive information is sent toward an unknown external endpoint.
 
+Expected behavior:
+
+Sensitive Information
+HIGH
+
+Destination Risk
+HIGH
+
+Trust Boundary
+HIGH
+
+→ BLOCK
 Malicious Webpage
 
-External content attempts to manipulate the agent's instructions.
+An external page attempts to influence the agent's instructions.
 
 Goal Deviation
 
-The agent attempts an unrelated or privileged operation.
+The agent attempts an unrelated privileged operation.
 
 Benign Workflow
 
-A legitimate action demonstrates that the system can allow normal behavior.
+A legitimate action demonstrates that normal behavior can be allowed.
 
-The Attack Lab is designed to demonstrate both:
-
-Attack prevention
-False-positive resistance
-Example: Intent vs Risk
+Example: PII + External Upload
 
 Consider:
 
@@ -434,42 +537,82 @@ upload_file(
   destination="PDF.com"
 )
 
-AGENTZERO might observe:
+Suppose the PDF contains PII.
 
-Sensitive Information    88
-Destination Risk         80
-Action Impact            85
-Intent Deviation          5
-Prompt Injection          0
-Trust Boundary           95
+AGENTZERO can distinguish:
 
-This is an important distinction:
+Sensitive Information
+HIGH
 
-Intent Deviation = LOW
+from:
 
-because the upload was explicitly requested.
+Intent Deviation
+LOW
 
-The action can still require REVIEW or BLOCK because other security factors may create a policy violation.
+because the user explicitly requested the upload.
 
-That means AGENTZERO is not confusing:
+The action can still require REVIEW or BLOCK because of the sensitive information and destination risk.
 
-"The agent misunderstood the user"
+This is intentional:
 
-with:
+Intent Deviation
+=
+Did the agent follow the user's requested goal?
 
-"The requested action creates a security risk."
+Security Risk
+=
+Is executing the requested action acceptable under policy?
+
+Those are different questions.
+
+Agent and AGENTZERO Models
+
+AGENTZERO can use separate models for:
+
+AI Agent
+
+and:
+
+AGENTZERO Analyzer
+
+For example:
+
+Agent Model:
+Gemini
+
+AGENTZERO Analyzer:
+Claude
+
+This keeps the security evaluation layer independent from the model that originally proposed the action.
+
+The runtime supports provider-aware model discovery for supported providers.
+
+File and Artifact Security
+
+AGENTZERO can retain the original document or image as security evidence alongside:
+
+Original artifact
++
+Metadata
++
+Classification
++
+Provenance
++
+Security analysis
+
+This is useful when extracted text alone would lose important information about the original artifact.
 
 API
 
-The Python runtime exposes an HTTP API for integrating with an agent or demonstration console.
+The runtime exposes an HTTP API for integrations and the demo console.
 
-Key routes include:
+Important endpoints include:
 
 GET  /api/health
 GET  /api/stats
 GET  /api/policies
 GET  /api/events
-
 GET  /api/events/<event_id>
 
 POST /api/evaluate
@@ -483,47 +626,16 @@ POST /api/provider/models
 
 POST /api/attacks/run
 
-The exact available routes may evolve with the current runtime build.
-
-Project Structure
-
-A typical AGENTZERO package looks like:
-
-agentzero/
-├── agentzero_backend.py
-├── agentzero_frontend/
-│   └── index.html
-├── agentzero.db
-└── README.md
-
-The database is local and used for event persistence when enabled.
-
-The frontend can also maintain client-side demonstration state such as chat history and uploaded-file metadata.
-
-Running AGENTZERO
-Requirements
-
-For the current local/demo build:
-
-Python 3
-A modern browser
-No Python third-party packages are required for the default local runtime
-Start the runtime
-python3 agentzero_backend.py
-
-By default, the server runs on:
-
-http://127.0.0.1:8000
-
-Open that address in your browser to access the demonstration console.
+The exact API surface may evolve as the runtime develops.
 
 Configuration
 
-Optional environment variables include:
+The runtime supports optional environment configuration.
+
+Typical settings include:
 
 AGENTZERO_HOST=127.0.0.1
 AGENTZERO_PORT=8000
-
 AGENTZERO_DB=agentzero.db
 
 AGENTZERO_API_KEY=
@@ -533,90 +645,70 @@ LLM_BASE_URL=http://localhost:11434/v1
 LLM_API_KEY=
 LLM_MODEL=llama3.1:8b
 
-Provider API keys can also be supplied through the application configuration for the current session.
+Provider credentials may also be configured through the application.
 
-Do not commit real API keys to source control.
+Do not commit API keys or other secrets to the repository.
 
-Demo Flow
+Development Philosophy
 
-A useful demo sequence is:
+AGENTZERO is built around several principles.
 
-1. Open Live Agent
-2. Give the agent a legitimate task
-3. Show the proposed tool call
-4. Show AGENTZERO evaluating it
-5. Open the risk breakdown
-6. Run an Attack Lab scenario
-7. Show BLOCK or REVIEW
-8. Open the event explanation
-9. Demonstrate human approval
-10. Show the resulting audit event
+Independent security boundary
 
-The most important concept to demonstrate is the boundary:
+The agent proposes actions; AGENTZERO enforces them.
 
-AI Agent
-   ↓
-AGENTZERO
-   ↓
-Security Decision
-   ↓
-Execution
-Security Design Principles
+Runtime-aware decisions
 
-AGENTZERO follows these principles:
+The engine should use what is actually true at execution time rather than blindly trusting model-generated claims.
 
-Independence
+Deterministic enforcement
 
-The security layer should remain independent from the model proposing an action.
-
-Runtime Awareness
-
-Security decisions should use actual execution context and runtime facts whenever possible.
-
-Deterministic Enforcement
-
-The final authorization decision should be derived from explicit security logic and policies rather than simply trusting an AI model's judgment.
+The final authorization decision should come from explicit risk and policy logic.
 
 Explainability
 
-Every event should answer:
+Every security event should answer:
 
 What happened?
 Why was it detected?
 What evidence supports it?
-How did each category contribute?
+How much did each factor contribute?
 Which policy matched?
-Why was it allowed, reviewed, or blocked?
-Least Authority
+Why was the action allowed, reviewed, or blocked?
+Least authority
 
-Agents should not receive more capability than required for the task.
+Agents should have only the capabilities required for the task.
 
-Human Control
+Human control
 
-Consequential actions can be paused for explicit human approval.
+Consequential actions can be paused for human approval.
 
 Current Status
 
-AGENTZERO is currently a functional prototype demonstrating a runtime security architecture for autonomous AI agents.
+AGENTZERO is a functional prototype of a runtime security architecture for autonomous AI agents.
 
-The prototype focuses on:
+The current prototype demonstrates:
 
-Runtime action evaluation
-Explainable risk
-Policy enforcement
-Human approval
-Prompt-injection defense
+Runtime tool-call evaluation
+Intent verification
 Sensitive-data awareness
-Destination and trust-boundary analysis
-Attack scenarios
-Independent agent/security models
-Auditable event history
+Prompt-injection detection
+Destination risk
+Trust-boundary analysis
+Structured risk scoring
+Policy enforcement
+ALLOW / REVIEW / BLOCK decisions
+Human approval
+Explainable security events
+Attack Lab scenarios
+Independent agent and analyzer models
+Event history and auditing
 
-The current tool implementations include simulated side effects for safe demonstration purposes.
+Some tool side effects in the demonstration environment are intentionally simulated for safe testing.
 
 Roadmap
 
-Future directions include:
+Future work includes:
 
 Native integrations with major agent frameworks
 Real DLP and data-classification engines
@@ -626,23 +718,20 @@ Sandboxed tool execution
 Organization-wide policy management
 Persistent approval workflows
 Multi-agent monitoring
-Advanced behavioral anomaly detection
-Enterprise audit and compliance capabilities
-Production-grade deployment and observability
-
-The long-term vision is for AGENTZERO to become a security control plane for autonomous AI systems.
-
+Behavioral anomaly detection
+Enterprise audit and compliance support
+Production deployment and observability
 Vision
 
-As AI agents gain access to increasingly powerful systems, the question is no longer only:
+As AI agents gain access to more powerful systems, the important question is no longer only:
 
-"Can the agent complete the task?"
+Can the agent complete the task?
 
-It becomes:
+It is also:
 
-"Can the agent complete the task while staying inside an enforceable security boundary?"
+Can the agent complete the task while staying inside an enforceable security boundary?
 
-AGENTZERO is designed to provide that boundary.
+AGENTZERO is built to provide that boundary.
 
 AI autonomy
      ↓
@@ -656,3 +745,9 @@ Enforceable
 Real-world execution
 
 AGENTZERO — Let agents act. Keep execution under control.
+
+Repository
+
+GitHub:
+https://github.com/website-hub-code/agentzero
+```
